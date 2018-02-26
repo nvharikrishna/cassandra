@@ -443,6 +443,8 @@ public interface StorageServiceMBean extends NotificationEmitter
 
     public List<String> getKeyspaces();
 
+    public Map<String, Integer> getKeyspacesWithReplicationFactor();
+
     public List<String> getNonSystemKeyspaces();
 
     public List<String> getNonLocalStrategyKeyspaces();

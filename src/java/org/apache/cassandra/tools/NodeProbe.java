@@ -582,6 +582,11 @@ public class NodeProbe implements AutoCloseable
         return ssProxy.getReleaseVersion();
     }
 
+    public Map<String, String> getEndpointsWithReleaseVersion()
+    {
+        return gossProxy.getReleaseVersions();
+    }
+
     public int getCurrentGenerationNumber()
     {
         return ssProxy.getCurrentGenerationNumber();
@@ -930,6 +935,11 @@ public class NodeProbe implements AutoCloseable
     public List<String> getNonSystemKeyspaces()
     {
         return ssProxy.getNonSystemKeyspaces();
+    }
+
+    public Map<String, Integer> getKeyspacesWithReplicationFactor()
+    {
+        return ssProxy.getKeyspacesWithReplicationFactor();
     }
 
     public List<String> getNonLocalStrategyKeyspaces()

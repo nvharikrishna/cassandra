@@ -19,6 +19,7 @@ package org.apache.cassandra.gms;
 
 import java.net.UnknownHostException;
 import java.util.List;
+import java.util.Map;
 
 public interface GossiperMBean
 {
@@ -33,5 +34,7 @@ public interface GossiperMBean
     public List<String> reloadSeeds();
 
     public List<String> getSeeds();
+
+    public Map<String, String> getReleaseVersions();
 
 }

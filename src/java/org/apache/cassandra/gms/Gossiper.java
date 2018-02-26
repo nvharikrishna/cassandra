@@ -1731,6 +1731,21 @@ public class Gossiper implements IFailureDetectionEventListener, GossiperMBean
         return state != null ? state.getReleaseVersion() : null;
     }
 
+    public Map<String, String> getReleaseVersions()
+    {
+        Set<Entry<InetAddressAndPort, EndpointState>> endpointStates = getEndpointStates();
+        Map<String, String> endpointReleaseVersion = new HashMap<>(endpointStates.size());
+        boolean withPort = false;
+        for (Entry<InetAddressAndPort, EndpointState> entry : endpointStates)
+        {
+            String host = entry.getKey().getHostAddress(withPort);
+            String verison = entry.getValue().getReleaseVersion().toString();
+            endpointReleaseVersion.put(host, verison);
+        }
+
+        return endpointReleaseVersion;
+    }
+
     @Nullable
     public UUID getSchemaVersion(InetAddressAndPort ep)
     {

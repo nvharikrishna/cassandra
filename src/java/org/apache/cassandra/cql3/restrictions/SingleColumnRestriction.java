@@ -31,6 +31,7 @@ import org.apache.cassandra.db.MultiCBuilder;
 import org.apache.cassandra.db.filter.RowFilter;
 import org.apache.cassandra.index.Index;
 import org.apache.cassandra.index.IndexRegistry;
+import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.Pair;
 
@@ -218,7 +219,8 @@ public abstract class SingleColumnRestriction implements SingleRestriction
                                    IndexRegistry indexRegistry,
                                    QueryOptions options)
         {
-            throw invalidRequest("IN restrictions are not supported on indexed columns");
+//            ByteBuffer buffer = CollectionSerializer.serializeBuffers(getValues(options));
+            filter.addIn(columnDef, getValues(options));
         }
 
         @Override

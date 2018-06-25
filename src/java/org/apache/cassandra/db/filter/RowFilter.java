@@ -41,6 +41,7 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.serializers.CollectionSerializer;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -85,6 +86,12 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
         SimpleExpression expression = new SimpleExpression(def, op, value);
         add(expression);
         return expression;
+    }
+
+    public InExpression addIn(ColumnMetadata def, List<ByteBuffer> values) {
+        InExpression inExpression = new InExpression(def, values);
+        add(inExpression);
+        return inExpression;
     }
 
     public void addMapEquality(ColumnMetadata def, ByteBuffer key, Operator op, ByteBuffer value)
@@ -332,7 +339,7 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
         // and this is why we have some UNUSEDX for values we don't use anymore
         // (we could clean those on a major protocol update, but it's not worth
         // the trouble for now)
-        protected enum Kind { SIMPLE, MAP_EQUALITY, UNUSED1, CUSTOM, USER }
+        protected enum Kind { SIMPLE, MAP_EQUALITY, UNUSED1, CUSTOM, USER, IN }
 
         protected abstract Kind kind();
         protected final ColumnMetadata column;
@@ -490,6 +497,9 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                     case SIMPLE:
                         ByteBufferUtil.writeWithShortLength(((SimpleExpression)expression).value, out);
                         break;
+                    case IN:
+                        ByteBufferUtil.writeWithShortLength(((InExpression)expression).value, out);
+                        break;
                     case MAP_EQUALITY:
                         MapEqualityExpression mexpr = (MapEqualityExpression)expression;
                         ByteBufferUtil.writeWithShortLength(mexpr.key, out);
@@ -524,6 +534,8 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                 {
                     case SIMPLE:
                         return new SimpleExpression(column, operator, ByteBufferUtil.readWithShortLength(in));
+                    case IN:
+                        return new InExpression(column, ByteBufferUtil.readWithShortLength(in));
                     case MAP_EQUALITY:
                         ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
                         ByteBuffer value = ByteBufferUtil.readWithShortLength(in);
@@ -546,6 +558,9 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                 {
                     case SIMPLE:
                         size += ByteBufferUtil.serializedSizeWithShortLength(((SimpleExpression)expression).value);
+                        break;
+                    case IN:
+                        size += ByteBufferUtil.serializedSizeWithShortLength(((InExpression)expression).value);
                         break;
                     case MAP_EQUALITY:
                         MapEqualityExpression mexpr = (MapEqualityExpression)expression;
@@ -676,11 +691,9 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                         ByteBuffer foundValue = getValue(metadata, partitionKey, row);
                         return foundValue != null && mapType.getSerializer().getSerializedValue(foundValue, value, mapType.getKeysType()) != null;
                     }
-
-                case IN:
-                    // It wouldn't be terribly hard to support this (though doing so would imply supporting
-                    // IN for 2ndary index) but currently we don't.
-                    throw new AssertionError();
+//                case IN:
+//                    ByteBuffer foundValue = getValue(metadata, partitionKey, row);
+//                    return foundValue != null && operator.isSatisfiedBy(column.type, foundValue, value);
             }
             throw new AssertionError();
         }
@@ -713,6 +726,43 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
         protected Kind kind()
         {
             return Kind.SIMPLE;
+        }
+    }
+
+    private static class InExpression extends Expression
+    {
+        List<ByteBuffer> values;
+        protected InExpression(ColumnMetadata column, List<ByteBuffer> values)
+        {
+            super(column, Operator.IN, CollectionSerializer.serializeBuffers(values));
+            this.values = values;
+        }
+
+        public InExpression(ColumnMetadata column, ByteBuffer byteBuffer)
+        {
+            super(column, Operator.IN, byteBuffer);
+//            this.values =
+        }
+
+        protected Kind kind()
+        {
+            return Kind.IN;
+        }
+
+        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row)
+        {
+            ByteBuffer foundValue = getValue(metadata, partitionKey, row);
+
+            if(null == foundValue)
+                return false;
+
+            for(ByteBuffer value: values)
+            {
+                if(column.type.compareForCQL(foundValue, value) == 0)
+                    return true;
+            }
+
+            return false;
         }
     }
 

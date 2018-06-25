@@ -41,6 +41,11 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
         return pack(values, getElementCount(value), ProtocolVersion.V3);
     }
 
+    public static ByteBuffer serializeBuffers(List<ByteBuffer> values)
+    {
+        return pack(values, values.size(), ProtocolVersion.V3);
+    }
+
     public T deserialize(ByteBuffer bytes)
     {
         // The only cases we serialize/deserialize collections internally (i.e. not for the protocol sake),

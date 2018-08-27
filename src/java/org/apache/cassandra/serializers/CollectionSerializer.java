@@ -19,6 +19,7 @@
 package org.apache.cassandra.serializers;
 
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
@@ -39,6 +40,11 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
         List<ByteBuffer> values = serializeValues(value);
         // See deserialize() for why using the protocol v3 variant is the right thing to do.
         return pack(values, getElementCount(value), ProtocolVersion.V3);
+    }
+
+    public static ByteBuffer serializeBuffers(Collection<ByteBuffer> values)
+    {
+        return pack(values, values.size(), ProtocolVersion.V3);
     }
 
     public T deserialize(ByteBuffer bytes)
@@ -68,6 +74,22 @@ public abstract class CollectionSerializer<T> implements TypeSerializer<T>
         for (ByteBuffer bb : buffers)
             writeValue(result, bb, version);
         return (ByteBuffer)result.flip();
+    }
+
+    public static List<ByteBuffer> deserializeBuffers(ByteBuffer buffer)
+    {
+        return unpack(buffer, ProtocolVersion.V3);
+    }
+
+    private static List<ByteBuffer> unpack(ByteBuffer buffer, ProtocolVersion version)
+    {
+        int size = readCollectionSize(buffer, version);
+        List<ByteBuffer> buffers = new ArrayList<>(size);
+        for(int i = 1; i <= size; i++)
+        {
+            buffers.add(readValue(buffer, version));
+        }
+        return buffers;
     }
 
     protected static void writeCollectionSize(ByteBuffer output, int elements, ProtocolVersion version)

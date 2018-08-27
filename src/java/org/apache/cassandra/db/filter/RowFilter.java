@@ -41,6 +41,8 @@ import org.apache.cassandra.io.util.DataOutputPlus;
 import org.apache.cassandra.schema.ColumnMetadata;
 import org.apache.cassandra.schema.IndexMetadata;
 import org.apache.cassandra.schema.TableMetadata;
+import org.apache.cassandra.serializers.CollectionSerializer;
+import org.apache.cassandra.transport.ProtocolVersion;
 import org.apache.cassandra.utils.ByteBufferUtil;
 import org.apache.cassandra.utils.FBUtilities;
 
@@ -83,6 +85,13 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
     public SimpleExpression add(ColumnMetadata def, Operator op, ByteBuffer value)
     {
         SimpleExpression expression = new SimpleExpression(def, op, value);
+        add(expression);
+        return expression;
+    }
+
+    public SimpleExpression addIn(ColumnMetadata def, Operator op, List<ByteBuffer> listOfValues)
+    {
+        InExpression expression = new InExpression(def, op, listOfValues);
         add(expression);
         return expression;
     }
@@ -525,7 +534,11 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                 switch (kind)
                 {
                     case SIMPLE:
-                        return new SimpleExpression(column, operator, ByteBufferUtil.readWithShortLength(in));
+                        if(Operator.IN.equals(operator))
+                            return new InExpression(column, operator,
+                                                    CollectionSerializer.deserializeBuffers(ByteBufferUtil.readWithShortLength(in)));
+                        else
+                            return new SimpleExpression(column, operator, ByteBufferUtil.readWithShortLength(in));
                     case MAP_EQUALITY:
                         ByteBuffer key = ByteBufferUtil.readWithShortLength(in);
                         ByteBuffer value = ByteBufferUtil.readWithShortLength(in);
@@ -679,10 +692,6 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
                         return foundValue != null && mapType.getSerializer().getSerializedValue(foundValue, value, mapType.getKeysType()) != null;
                     }
 
-                case IN:
-                    // It wouldn't be terribly hard to support this (though doing so would imply supporting
-                    // IN for 2ndary index) but currently we don't.
-                    throw new AssertionError();
             }
             throw new AssertionError();
         }
@@ -715,6 +724,48 @@ public abstract class RowFilter implements Iterable<RowFilter.Expression>
         protected Kind kind()
         {
             return Kind.SIMPLE;
+        }
+    }
+
+    public static class InExpression extends SimpleExpression
+    {
+        private final List<ByteBuffer> listOfValues;
+
+        InExpression(ColumnMetadata def, Operator op, List<ByteBuffer> listOfValues)
+        {
+            super(def, op, CollectionSerializer.serializeBuffers(listOfValues));
+            this.listOfValues =  listOfValues;
+        }
+
+        //Override validate, toString, isMatching.
+        @Override
+        public void validate()
+        {
+            for(ByteBuffer listValue: listOfValues)
+            {
+                checkNotNull(listValue, "Unsupported null value for column %s", column.name);
+                checkBindValueSet(listValue, "Unsupported unset value for column %s", column.name);
+            }
+        }
+
+        @Override
+        public boolean isSatisfiedBy(TableMetadata metadata, DecoratedKey partitionKey, Row row)
+        {
+            //Note: multi column IN restrictions are not yet supported.
+            ByteBuffer foundValue = getValue(metadata, partitionKey, row);
+            if (foundValue == null)
+                return false;
+
+            Collections.sort(listOfValues, column.type.reverseComparator);
+            for (ByteBuffer listValue : listOfValues)
+            {
+                int diff = column.type.compareForCQL(foundValue, listValue);
+                if (diff == 0)
+                    return true;
+                if (diff > 0)
+                    break;
+            }
+            return false;
         }
     }
 

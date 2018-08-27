@@ -284,6 +284,53 @@ public class SelectSingleColumnRelationTest extends CQLTester
     }
 
     @Test
+    public void testInRestrictionWithClusteringColumn() throws Throwable
+    {
+        createTable("CREATE TABLE %s (key int, c1 int, c2 int, s1 text static, PRIMARY KEY ((key, c1), c2))");
+
+        execute("INSERT INTO %s (key, c1, c2, s1) VALUES ( 10, 11, 1, 's1')");
+        execute("INSERT INTO %s (key, c1, c2, s1) VALUES ( 10, 12, 2, 's2')");
+        execute("INSERT INTO %s (key, c1, c2, s1) VALUES ( 10, 13, 3, 's3')");
+        execute("INSERT INTO %s (key, c1, c2, s1) VALUES ( 10, 13, 4, 's4')");
+        execute("INSERT INTO %s (key, c1, c2, s1) VALUES ( 20, 21, 1, 's1')");
+        execute("INSERT INTO %s (key, c1, c2, s1) VALUES ( 20, 22, 2, 's2')");
+        execute("INSERT INTO %s (key, c1, c2, s1) VALUES ( 20, 22, 3, 's3')");
+
+        assertRows(execute("SELECT * from %s WHERE key = ? AND c1 IN (?, ?)", 10, 21, 13),
+                   row(10, 13, 3, "s4"),
+                   row(10, 13, 4, "s4"));
+
+        assertRows(execute("SELECT * from %s WHERE key = ? AND c2 IN (?, ?) ALLOW FILTERING", 20, 1, 2),
+                   row(20, 22, 2, "s3"),
+                   row(20, 21, 1, "s1"));
+
+        assertRows(execute("SELECT * from %s WHERE c1 = ? AND c2 IN (?, ?) ALLOW FILTERING", 13, 2, 3),
+                   row(10, 13, 3, "s4"));
+
+        assertRowsIgnoringOrder(execute("SELECT * from %s WHERE c1 IN (?, ?, ?) ALLOW FILTERING", 22, 13, 11),
+                   row(20, 22, 2, "s3"),
+                   row(20, 22, 3, "s3"),
+                   row(10, 11, 1, "s1"),
+                   row(10, 13, 3, "s4"),
+                   row(10, 13, 4, "s4"));
+
+        assertRowsIgnoringOrder(execute("SELECT * from %s WHERE c2 IN (?, ?) ALLOW FILTERING", 1, 2),
+                   row(10, 11, 1, "s1"),
+                   row(10, 12, 2, "s2"),
+                   row(20, 21, 1, "s1"),
+                   row(20, 22, 2, "s3"));
+
+        assertInvalidMessage("IN predicates on non-primary-key columns (s1) is not yet supported",
+                             "select * from %s WHERE s1 IN ('s1', 's2') ALLOW FILTERING");
+
+        assertInvalidMessage("Unsupported null value for column key",
+                             "select * from %s WHERE key IN (10, null) ALLOW FILTERING");
+
+        assertInvalidMessage("Invalid null value in condition for column c2",
+                             "select * from %s WHERE c2 IN (10, null) ALLOW FILTERING");
+    }
+
+    @Test
     public void testAllowFilteringWithIndexedColumnAndStaticColumns() throws Throwable
     {
         createTable("CREATE TABLE %s (a int, b int, c int, s int static, PRIMARY KEY(a, b))");
@@ -350,9 +397,7 @@ public class SelectSingleColumnRelationTest extends CQLTester
         assertRows(execute("SELECT v1 FROM %s WHERE id2 = 0"), row("A"), row("B"), row("D"));
 
         assertRows(execute("SELECT v1 FROM %s WHERE time = 1"), row("B"), row("E"));
-
-        assertInvalidMessage("IN restrictions are not supported on indexed columns",
-                             "SELECT v1 FROM %s WHERE id2 = 0 and time IN (1, 2) ALLOW FILTERING");
+        assertRows(execute("SELECT v1 FROM %s WHERE id2 = 1 and time IN (1, 2) ALLOW FILTERING"), row("C"), row("E"));
 
         assertRows(execute("SELECT v1 FROM %s WHERE author > 'ted' AND time = 1 ALLOW FILTERING"), row("E"));
         assertRows(execute("SELECT v1 FROM %s WHERE author > 'amy' AND author < 'zoe' AND time = 0 ALLOW FILTERING"),

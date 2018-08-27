@@ -1669,9 +1669,6 @@ public class SelectTest extends CQLTester
 
         beforeAndAfterFlush(() -> {
 
-            assertInvalidMessage("IN restrictions are not supported when the query involves filtering",
-                    "SELECT * FROM %s WHERE b in (11,12) ALLOW FILTERING");
-
             assertInvalidMessage(StatementRestrictions.REQUIRES_ALLOW_FILTERING_MESSAGE,
                     "SELECT * FROM %s WHERE a = 11");
 
@@ -1744,9 +1741,6 @@ public class SelectTest extends CQLTester
         execute("INSERT INTO %s (a,b,c,d) VALUES (31, 32, 33, 34)");
 
         beforeAndAfterFlush(() -> {
-
-             assertInvalidMessage("IN restrictions are not supported when the query involves filtering",
-                    "SELECT * FROM %s WHERE b in (11,12) ALLOW FILTERING");
 
             assertInvalidMessage(StatementRestrictions.REQUIRES_ALLOW_FILTERING_MESSAGE,
                     "SELECT * FROM %s WHERE a = 11");

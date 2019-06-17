@@ -42,15 +42,18 @@ class ShareableBytes
 
     ShareableBytes(ByteBuffer bytes)
     {
-        this.count = UNSHARED;
-        this.owner = this;
-        this.bytes = bytes;
+        this(bytes, null);
     }
 
-    ShareableBytes(ShareableBytes owner, ByteBuffer bytes)
+    private ShareableBytes(ByteBuffer bytes, ShareableBytes owner)
     {
-        this.owner = owner;
+        this(bytes, UNSHARED, owner);
+    }
+
+    private ShareableBytes(ByteBuffer bytes, int count, ShareableBytes owner) {
         this.bytes = bytes;
+        this.count = count;
+        this.owner = owner == null ? this : owner;
     }
 
     ByteBuffer get()
@@ -163,7 +166,7 @@ class ShareableBytes
     {
         ByteBuffer slice = bytes.duplicate();
         slice.position(begin).limit(end);
-        return new ShareableBytes(owner.retain(), slice);
+        return new ShareableBytes(slice, owner.retain());
     }
 
     static ShareableBytes wrap(ByteBuffer buffer)

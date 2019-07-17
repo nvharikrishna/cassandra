@@ -403,11 +403,11 @@ public class OutboundTcpConnection extends Thread
 
     private void disconnect()
     {
-        if (socket != null)
+        if (out != null)
         {
             try
             {
-                socket.close();
+                out.close();
                 if (logger.isTraceEnabled())
                     logger.trace("Socket to {} closed", poolReference.endPoint());
             }

@@ -403,11 +403,11 @@ public class OutboundTcpConnection extends FastThreadLocalThread
 
     private void disconnect()
     {
-        if (socket != null)
+        if (out != null)
         {
             try
             {
-                socket.close();
+                out.close();
                 logger.debug("Socket to {} closed", poolReference.endPoint());
             }
             catch (IOException e)

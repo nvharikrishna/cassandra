@@ -45,6 +45,9 @@ import org.apache.cassandra.utils.*;
 import org.apache.cassandra.utils.btree.BTreeSet;
 
 import static java.util.concurrent.TimeUnit.*;
+import static org.apache.cassandra.net.MessagingService.VERSION_30;
+import static org.apache.cassandra.net.MessagingService.VERSION_3014;
+import static org.apache.cassandra.net.MessagingService.VERSION_40;
 
 public class CounterMutation implements IMutation
 {
@@ -74,6 +77,15 @@ public class CounterMutation implements IMutation
     public Collection<PartitionUpdate> getPartitionUpdates()
     {
         return mutation.getPartitionUpdates();
+    }
+
+    public void validateSize(int version, int overhead)
+    {
+        long totalSize = serializedSize(version) + overhead;
+        if(totalSize > MAX_MUTATION_SIZE)
+        {
+            throw new MutationExceededMaxSizeException(this, version, totalSize);
+        }
     }
 
     public Mutation getMutation()
@@ -308,6 +320,31 @@ public class CounterMutation implements IMutation
         return DatabaseDescriptor.getCounterWriteRpcTimeout(unit);
     }
 
+    private long serializedSize30;
+    private long serializedSize3014;
+    private long serializedSize40;
+
+    public long serializedSize(int version)
+    {
+        switch (version)
+        {
+            case VERSION_30:
+                if (serializedSize30 == 0)
+                    serializedSize30 = serializer.serializedSize(this, VERSION_30);
+                return serializedSize30;
+            case VERSION_3014:
+                if (serializedSize3014 == 0)
+                    serializedSize3014 = serializer.serializedSize(this, VERSION_3014);
+                return serializedSize3014;
+            case VERSION_40:
+                if (serializedSize40 == 0)
+                    serializedSize40 = serializer.serializedSize(this, VERSION_40);
+                return serializedSize40;
+            default:
+                throw new IllegalStateException("Unknown serialization version: " + version);
+        }
+    }
+
     @Override
     public String toString()
     {
@@ -336,7 +373,7 @@ public class CounterMutation implements IMutation
 
         public long serializedSize(CounterMutation cm, int version)
         {
-            return Mutation.serializer.serializedSize(cm.mutation, version)
+            return cm.mutation.serializedSize(version)
                  + TypeSizes.sizeof(cm.consistency.name());
         }
     }

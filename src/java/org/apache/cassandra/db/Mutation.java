@@ -268,25 +268,25 @@ public class Mutation implements IMutation
         }
         return buff.append("])").toString();
     }
-    private long serializedSize30;
-    private long serializedSize3014;
-    private long serializedSize40;
+    private int serializedSize30;
+    private int serializedSize3014;
+    private int serializedSize40;
 
-    public long serializedSize(int version)
+    public int serializedSize(int version)
     {
         switch (version)
         {
             case VERSION_30:
                 if (serializedSize30 == 0)
-                    serializedSize30 = serializer.serializedSize(this, VERSION_30);
+                    serializedSize30 = (int) serializer.serializedSize(this, VERSION_30);
                 return serializedSize30;
             case VERSION_3014:
                 if (serializedSize3014 == 0)
-                    serializedSize3014 = serializer.serializedSize(this, VERSION_3014);
+                    serializedSize3014 = (int) serializer.serializedSize(this, VERSION_3014);
                 return serializedSize3014;
             case VERSION_40:
                 if (serializedSize40 == 0)
-                    serializedSize40 = serializer.serializedSize(this, VERSION_40);
+                    serializedSize40 = (int) serializer.serializedSize(this, VERSION_40);
                 return serializedSize40;
             default:
                 throw new IllegalStateException("Unknown serialization version: " + version);

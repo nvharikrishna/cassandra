@@ -424,7 +424,7 @@ public abstract class CommitLogTest
         max -= CommitLogSegment.ENTRY_OVERHEAD_SIZE; // log entry overhead
 
         // Note that the size of the value if vint encoded. So we first compute the ovehead of the mutation without the value and it's size
-        int mutationOverhead = (int)rm.serializedSize(MessagingService.current_version) - (VIntCoding.computeVIntSize(allocSize) + allocSize);
+        int mutationOverhead = rm.serializedSize(MessagingService.current_version) - (VIntCoding.computeVIntSize(allocSize) + allocSize);
         max -= mutationOverhead;
 
         // Now, max is the max for both the value and it's size. But we want to know how much we can allocate, i.e. the size of the value.

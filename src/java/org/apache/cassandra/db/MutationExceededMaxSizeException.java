@@ -22,6 +22,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import org.apache.cassandra.db.partitions.PartitionUpdate;
 
 import static org.apache.cassandra.db.IMutation.MAX_MUTATION_SIZE;
@@ -48,7 +50,17 @@ public class MutationExceededMaxSizeException extends RuntimeException
                                                                        upd.metadata().partitionKeyType.getString(upd.partitionKey().getKey())))
                                              .collect(Collectors.toList());
 
-        Iterator<String> iterator = topPartitions.listIterator();
+        String topKeys = makeTopKeysString(topPartitions, PARTITION_MESSAGE_LIMIT);
+        return String.format("Encountered an oversized mutation (%d/%d) for keyspace: %s. Top keys are: %s",
+                             totalSize,
+                             MAX_MUTATION_SIZE,
+                             mutation.getKeyspaceName(),
+                             topKeys);
+    }
+
+    @VisibleForTesting
+    static String makeTopKeysString(List<String> keys, int maxLength) {
+        Iterator<String> iterator = keys.listIterator();
         StringBuilder stringBuilder = new StringBuilder();
         while (iterator.hasNext())
         {
@@ -59,7 +71,7 @@ public class MutationExceededMaxSizeException extends RuntimeException
                 stringBuilder.append(key); //ensures atleast one key is added
                 iterator.remove();
             }
-            else if (stringBuilder.length() + key.length() + 2 <= PARTITION_MESSAGE_LIMIT) // 2 for ", "
+            else if (stringBuilder.length() + key.length() + 2 <= maxLength) // 2 for ", "
             {
                 stringBuilder.append(", ").append(key);
                 iterator.remove();
@@ -68,13 +80,9 @@ public class MutationExceededMaxSizeException extends RuntimeException
                 break;
         }
 
-        if (topPartitions.size() > 0)
-            stringBuilder.append(" and ").append(topPartitions.size()).append(" more.");
+        if (keys.size() > 0)
+            stringBuilder.append(" and ").append(keys.size()).append(" more.");
 
-        return String.format("Encountered an oversized mutation (%d/%d) for keyspace: %s. Top keys are: %s",
-                             totalSize,
-                             MAX_MUTATION_SIZE,
-                             mutation.getKeyspaceName(),
-                             stringBuilder.toString());
+        return stringBuilder.toString();
     }
 }

@@ -90,7 +90,7 @@ public final class Batch
             size += sizeofUnsignedVInt(batch.decodedMutations.size());
             for (Mutation mutation : batch.decodedMutations)
             {
-                int mutationSize = (int) mutation.serializedSize(version);
+                int mutationSize = mutation.serializedSize(version);
                 size += sizeofUnsignedVInt(mutationSize);
                 size += mutationSize;
             }

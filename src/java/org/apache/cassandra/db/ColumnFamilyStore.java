@@ -1569,6 +1569,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
         return data.getView().select(sstableSet);
     }
 
+    public SSTableReader find(SSTableSet ssTableSet, Predicate<SSTableReader> filter)
+    {
+        return data.getView().find(ssTableSet, filter);
+    }
+
     public Iterable<SSTableReader> getUncompactingSSTables()
     {
         return data.getUncompacting();

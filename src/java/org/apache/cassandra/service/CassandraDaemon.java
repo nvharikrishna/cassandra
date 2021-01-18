@@ -316,7 +316,7 @@ public class CassandraDaemon
 
         try
         {
-            loadRowAndKeyCacheAsync().get();
+            loadRowAndKeyCacheAsync().get(60, TimeUnit.SECONDS);
         }
         catch (Throwable t)
         {

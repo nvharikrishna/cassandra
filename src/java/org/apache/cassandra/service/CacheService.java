@@ -444,7 +444,8 @@ public class CacheService implements CacheServiceMBean
             int generation = input.readInt();
             input.readBoolean(); // backwards compatibility for "promoted indexes" boolean
             SSTableReader reader;
-            if (cfs == null || !cfs.isKeyCacheEnabled() || (reader = findDesc(generation, cfs.getSSTables(SSTableSet.CANONICAL))) == null)
+            if (cfs == null || !cfs.isKeyCacheEnabled()
+                || (reader = cfs.find(SSTableSet.CANONICAL, (s) -> s != null && s.descriptor.generation == generation)) == null)
             {
                 // The sstable doesn't exist anymore, so we can't be sure of the exact version and assume its the current version. The only case where we'll be
                 // wrong is during upgrade, in which case we fail at deserialization. This is not a huge deal however since 1) this is unlikely enough that
@@ -458,16 +459,6 @@ public class CacheService implements CacheServiceMBean
                                                                                                                 reader.header);
             RowIndexEntry<?> entry = indexSerializer.deserializeForCache(input);
             return Futures.immediateFuture(Pair.create(new KeyCacheKey(cfs.metadata(), reader.descriptor, key), entry));
-        }
-
-        private SSTableReader findDesc(int generation, Iterable<SSTableReader> collection)
-        {
-            for (SSTableReader sstable : collection)
-            {
-                if (sstable.descriptor.generation == generation)
-                    return sstable;
-            }
-            return null;
         }
     }
 }

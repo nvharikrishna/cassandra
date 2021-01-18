@@ -153,6 +153,30 @@ public class View
         }
     }
 
+    public SSTableReader find(SSTableSet sstableSet, Predicate<SSTableReader> filter)
+    {
+        switch (sstableSet)
+        {
+            case LIVE:
+                return Iterables.find(sstables, filter);
+            case NONCOMPACTING:
+                return Iterables.find(sstables, (s) -> !compacting.contains(s) && filter.apply(s));
+            case CANONICAL:
+                for (SSTableReader sstable : compacting)
+                    if (sstable.openReason != SSTableReader.OpenReason.EARLY && filter.apply(sstable))
+                        return sstable;
+                // reason for checking if compacting contains the sstable is that if compacting has an EARLY version
+                // of a NORMAL sstable, we still have the canonical version of that sstable in sstables.
+                // note that the EARLY version is equal, but not == since it is a different instance of the same sstable.
+                for (SSTableReader sstable : sstables)
+                    if (!compacting.contains(sstable) && sstable.openReason != SSTableReader.OpenReason.EARLY && filter.apply(sstable))
+                        return sstable;
+                return null;
+            default:
+                throw new IllegalStateException();
+        }
+    }
+
     public Iterable<SSTableReader> getUncompacting(Iterable<SSTableReader> candidates)
     {
         return filter(candidates, new Predicate<SSTableReader>()

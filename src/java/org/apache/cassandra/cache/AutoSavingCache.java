@@ -272,6 +272,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
             finally
             {
                 FileUtils.closeQuietly(in);
+                cacheLoader.cleanupAfterDeserialize();
             }
         }
         if (logger.isTraceEnabled())
@@ -450,5 +451,7 @@ public class AutoSavingCache<K extends CacheKey, V> extends InstrumentingCache<K
         void serialize(K key, DataOutputPlus out, ColumnFamilyStore cfs) throws IOException;
 
         Future<Pair<K, V>> deserialize(DataInputPlus in, ColumnFamilyStore cfs) throws IOException;
+
+        default void cleanupAfterDeserialize() { }
     }
 }

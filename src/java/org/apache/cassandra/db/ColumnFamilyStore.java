@@ -30,6 +30,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
+import java.util.stream.Collector;
 import javax.management.*;
 import javax.management.openmbean.*;
 
@@ -1611,6 +1612,11 @@ public class ColumnFamilyStore implements ColumnFamilyStoreMBean
     public Iterable<SSTableReader> getSSTables(SSTableSet sstableSet)
     {
         return data.getView().select(sstableSet);
+    }
+
+    public <R, A> R collect(SSTableSet sstableSet, Collector<? super SSTableReader, A, R> collector)
+    {
+        return data.getView().collect(sstableSet, collector);
     }
 
     public Iterable<SSTableReader> getUncompactingSSTables()

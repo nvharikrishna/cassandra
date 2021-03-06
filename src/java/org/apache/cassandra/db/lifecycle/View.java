@@ -18,6 +18,9 @@
 package org.apache.cassandra.db.lifecycle;
 
 import java.util.*;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
@@ -148,6 +151,25 @@ public class View
                         canonicalSSTables.add(sstable);
 
                 return canonicalSSTables;
+            default:
+                throw new IllegalStateException();
+        }
+    }
+    public <R, A> R collect(SSTableSet sstableSet, Collector<? super SSTableReader, A, R> collector)
+    {
+        switch (sstableSet)
+        {
+            case LIVE:
+                return sstables.stream().collect(collector);
+            case NONCOMPACTING:
+                return sstables.stream().filter(s -> !compacting.contains(s)).collect(collector);
+            case CANONICAL:
+                // reason for checking if compacting contains the sstable is that if compacting has an EARLY version
+                // of a NORMAL sstable, we still have the canonical version of that sstable in sstables.
+                // note that the EARLY version is equal, but not == since it is a different instance of the same sstable.
+                return Stream.concat(compacting.stream(), sstables.stream().filter(r -> !compacting.contains(r)))
+                             .filter(reader -> reader.openReason != SSTableReader.OpenReason.EARLY)
+                             .collect(collector);
             default:
                 throw new IllegalStateException();
         }
